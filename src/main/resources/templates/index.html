@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>STOMP Client</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css">
+    <script>
+        function getSessionId() {
+            fetch("/session")
+                .then(response => {
+                    if (response.ok) {
+                        return response.text();
+                    }
+                })
+                .then(data => setSessionId(data))
+                .catch(error => console.error(error));
+        }
+    </script>
+</head>
+<body onload="getSessionId()">
+<div class="container">
+    <h2>STOMP Client</h2>
+    <form id="form" th:object="${configurationParams}">
+        <div id="alert"></div>
+        <div class="form-group">
+            <input type="text" class="form-control" th:id="connectUrl" th:name="connectUrl" placeholder="Connect URL, e.g. ws://localhost:9909/api/v1/stream">
+        </div>
+        <div class="form-group">
+            <input type="text" class="form-control" th:id="subscribeUrl" th:name="subscribeUrl" placeholder="Subscribe URL, e.g. /app/subscribe">
+        </div>
+        <div class="form-group">
+            <input type="text" class="form-control" th:id="topicUrl" th:name="topicUrl" placeholder="Topic URL, e.g. /topic/calendar">
+        </div>
+        <div class="form-group">
+            <input type="text" class="form-control" th:id="jwt" th:name="jwt" placeholder="JWT">
+        </div>
+        <div class="d-flex justify-content-between">
+            <button id="connectButton" type="button" class="btn btn-primary" onclick="connect()">Connect</button>
+            <button id="disconnectButton" type="button" class="btn btn-secondary" onclick="disconnect()">Disconnect</button>
+            <button type="button" class="btn btn-secondary ml-auto" onclick="clearLogs()">Clear output</button>
+        </div>
+    </form>
+    <div>
+        <pre id="logs" style="height: 500px; overflow-y: scroll; border: 1px solid black; padding: 5px; margin-top: 5px"></pre>
+    </div>
+</div>
+
+<script>
+    let stompSessionId = null;
+    const setSessionId = (value) => {
+        stompSessionId = value;
+        let alert = document.getElementById("alert");
+        let disconnectButton = document.getElementById("disconnectButton");
+        let connectButton = document.getElementById("connectButton");
+
+        if (isBlank(value)) {
+            alert.className = "alert alert-secondary";
+            alert.textContent = "Session closed";
+            disconnectButton.style.display = "none";
+            connectButton.style.display = "inline-block";
+        } else {
+            alert.className = "alert alert-success";
+            alert.textContent = "Session opened";
+            disconnectButton.style.display = "inline-block";
+            connectButton.style.display = "none";
+        }
+    }
+    const connect = () => {
+        let form = document.getElementById("form");
+        let formData = new FormData(form);
+        fetch("/connect", {
+            method: "POST",
+            body: formData
+        }).then(response => {
+            if (response.ok) {
+                return response.text();
+            }
+        }).then(data => setSessionId(data))
+          .catch(error => console.error(error));
+    }
+    const disconnect = () => {
+        fetch("/disconnect")
+            .then(response => {
+                if (response.ok) {
+                    setSessionId(null);
+                }
+            })
+            .catch(error => console.error(error));
+    }
+    const clearLogs = () => {
+        fetch("/clearLogs")
+            .then(() => {
+                fetchLogs();
+            })
+            .catch(error => console.error(error));
+    }
+    const fetchLogs = () => {
+        fetch("/actuator/logfile")
+            .then(response => response.text())
+            .then(data => {
+                document.getElementById('logs').innerHTML = data;
+            })
+            .catch(error => console.error(error));
+    }
+    const isBlank = string => (!string || /^\s*$/.test(string));
+    setInterval(() => fetchLogs(), 3000);
+</script>
+<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js"></script>
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.0/js/bootstrap.min.js"></script>
+</body>
+</html>

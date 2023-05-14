@@ -1,0 +1,13 @@
+logging:
+  level:
+    root: INFO
+  pattern:
+    file: "%d{yyyy-MM-dd HH:mm:ss} | %-5level | %msg%n"
+  file:
+    path: ./logs
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: logfile
